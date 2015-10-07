@@ -13,8 +13,7 @@ require 'slack/web/api/endpoints'
 require 'slack/web/client'
 
 # RealTime API
-require 'faye/websocket'
-require 'eventmachine'
+require 'websocket/driver'
 require 'slack/real_time/socket'
 require 'slack/real_time/api/message_id'
 require 'slack/real_time/api/ping'

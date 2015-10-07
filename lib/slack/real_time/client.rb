@@ -33,29 +33,42 @@ module Slack
         @callbacks[type] << block
       end
 
-      def start!
+      def init_driver
         fail ClientAlreadyStartedError if started?
-        EM.run do
-          @options = web_client.rtm_start
 
-          socket_options = {}
-          socket_options[:ping] = websocket_ping if websocket_ping
-          socket_options[:proxy] = websocket_proxy if websocket_proxy
-          @socket = Slack::RealTime::Socket.new(@options['url'], socket_options)
+        @options = web_client.rtm_start
+        @socket = Slack::RealTime::Socket.new(@options['url'])
 
-          @socket.connect! do |ws|
-            ws.on :open do |event|
-              open(event)
-            end
 
-            ws.on :message do |event|
-              dispatch(event)
-            end
+        @driver = WebSocket::Driver.client @socket
+        @driver.on :open do |event|
+          open(event)
+        end
 
-            ws.on :close do |event|
-              close(event)
-            end
+        @driver.on :error do |event|
+          error(event)
+        end
+
+        @driver.on :close do |event|
+          close(event)
+        end
+
+        @driver.on :message do |event|
+          dispatch(event)
+        end
+        @driver.start
+      end
+
+      def start!
+        init_driver
+        loop do
+          return if @closed
+          data = @socket.socket.readpartial 4096
+          if data.nil? or data.empty?
+            next
           end
+
+          @driver.parse data
         end
       end
 
@@ -65,7 +78,7 @@ module Slack
       end
 
       def started?
-        @socket && @socket.connected?
+        @started || false
       end
 
       class << self
@@ -84,13 +97,17 @@ module Slack
         fail ClientNotStartedError unless started?
         @socket.send_data(data.to_json)
       end
+      
+      def error(_event)
+      end
 
       def open(_event)
+        @started = true
       end
 
       def close(_event)
-        @socket = nil
-        EM.stop
+        @started = false
+        @closed = true
       end
 
       def dispatch(event)

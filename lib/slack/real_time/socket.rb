@@ -2,42 +2,38 @@ module Slack
   module RealTime
     class Socket
       attr_accessor :url
-      attr_accessor :options
+      attr_accessor :socket
 
-      def initialize(url, options = {})
+      def initialize(url)
         @url = url
-        @options = options
+        @socket = OpenSSL::SSL::SSLSocket.new TCPSocket.new URI(@url).host, 443
+        @socket.connect
+      end
+
+      def write(*args)
+        socket.write(*args)
       end
 
       def send_data(data)
         @ws.send(data) if @ws
       end
 
-      def connect!(&_block)
-        return if connected?
-
-        @ws = Faye::WebSocket::Client.new(url, nil, options)
-
-        @ws.on :close do |event|
-          close(event)
-        end
-
-        yield @ws if block_given?
-      end
 
       def disconnect!
         @ws.close if @ws
       end
 
       def connected?
-        !@ws.nil?
+        !@socket.nil?
       end
+
 
       protected
 
       def close(_event)
         @ws = nil
       end
+
     end
   end
 end
