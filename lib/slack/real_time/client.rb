@@ -64,17 +64,14 @@ module Slack
         loop do
           return if @closed
           data = @socket.socket.readpartial 4096
-          if data.nil? or data.empty?
-            next
-          end
-
+          next if data.nil? or data.empty?
           @driver.parse data
         end
       end
 
       def stop!
         fail ClientNotStartedError unless started?
-        @socket.disconnect! if @socket
+        @closed = true
       end
 
       def started?
@@ -95,7 +92,7 @@ module Slack
 
       def send_json(data)
         fail ClientNotStartedError unless started?
-        @socket.send_data(data.to_json)
+        @driver.text(data.to_json)
       end
       
       def error(_event)

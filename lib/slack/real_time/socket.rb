@@ -14,26 +14,6 @@ module Slack
         socket.write(*args)
       end
 
-      def send_data(data)
-        @ws.send(data) if @ws
-      end
-
-
-      def disconnect!
-        @ws.close if @ws
-      end
-
-      def connected?
-        !@socket.nil?
-      end
-
-
-      protected
-
-      def close(_event)
-        @ws = nil
-      end
-
     end
   end
 end
